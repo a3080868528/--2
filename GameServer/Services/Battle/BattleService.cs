@@ -1,24 +1,29 @@
-// Services/Battle/BattleService.cs
 using GameServer.Models.Entities;
+using GameServer.Models.Enums;
 using GameServer.Models.Messages;
 
 namespace GameServer.Services.Battle;
 
-// 实现接口
 public class BattleService : IBattleService
 {
     public AttackResult CalculateDamage(AttackRequest request)
     {
-        // 原来的逻辑不变
-        int targetDefense = 50;
-        int finalDamage = Math.Max(1, request.AttackValue - targetDefense);
-        int remainingHp = 100 - finalDamage;
+        // 简单的伤害计算逻辑
+        var random = new Random();
+        var damage = random.Next(10, 50) + request.AttackValue;
+
+        // 阵营加成逻辑
+        if (request.AttackerCamp == CampType.Player && request.DefenderCamp == CampType.Enemy)
+        {
+            damage = (int)(damage * 1.2f); // 玩家对敌人有20%伤害加成
+        }
 
         return new AttackResult
         {
-            TargetId = request.TargetId,
-            FinalDamage = finalDamage,
-            RemainingHp = remainingHp
+            Success = true,
+            Damage = damage,
+            RemainingHealth = Math.Max(0, request.DefenderHealth - damage),
+            Timestamp = DateTime.UtcNow
         };
     }
 }

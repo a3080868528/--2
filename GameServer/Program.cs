@@ -1,5 +1,4 @@
-// Program.cs
-using GameServer.Services.Battle; // 引用战斗服务
+using GameServer.Services.Battle;
 using GameServer.WebSockets;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.WebSockets;
@@ -8,32 +7,46 @@ using MongoDB.Driver;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 注册MongoDB（不变）
+// 从配置文件读取MongoDB连接信息
+var mongoConnectionString = builder.Configuration.GetConnectionString("MongoDB")
+                           ?? "mongodb://localhost:27017";
+var mongoDatabaseName = builder.Configuration["MongoDB:DatabaseName"]
+                        ?? "GameDB";
+
+// 注册MongoDB
 builder.Services.AddSingleton<IMongoDatabase>(sp =>
 {
-    var client = new MongoClient("mongodb://localhost:27017");
-    return client.GetDatabase("GameDB");
+    var client = new MongoClient(mongoConnectionString);
+    return client.GetDatabase(mongoDatabaseName);
 });
 
-// 注册WebSocket服务（不变）
-builder.Services.AddWebSockets(_ => { });
+// 配置WebSocket
+builder.Services.AddWebSockets(options =>
+{
+    options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+});
 
-// 注册战斗服务（接口+实现）
+// 注册服务
 builder.Services.AddScoped<IBattleService, BattleService>();
-// 注册WebSocketHandler（因为它需要依赖IBattleService）
 builder.Services.AddScoped<WebSocketHandler>();
 
 var app = builder.Build();
 
-// 启用WebSocket（不变）
+// 开发环境启用详细错误信息
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+
+// 启用WebSocket中间件
 app.UseWebSockets();
 
-// 映射WebSocket路径（这里要改，因为WebSocketHandler现在是普通类，需要通过依赖注入获取）
+// 映射WebSocket端点
 app.Map("/ws", async context =>
 {
-    // 从容器中获取WebSocketHandler实例（自动注入IBattleService）
     var handler = context.RequestServices.GetRequiredService<WebSocketHandler>();
-    await handler.HandleWebSocketAsync(context, _ => Task.CompletedTask);
+    await handler.HandleWebSocketAsync(context, context.RequestServices.GetRequiredService<RequestDelegate>());
 });
 
+// 启动服务器
 app.Run("http://localhost:5000");

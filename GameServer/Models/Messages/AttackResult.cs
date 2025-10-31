@@ -1,11 +1,9 @@
-namespace GameServer.Models.Entities;
+namespace GameServer.Models.Messages;
 
-// 攻击结果（返回给前端）
 public class AttackResult
 {
-
-    public string? AttackId { get; set; }
-    public string? TargetId { get; set; }
-    public string? FinalDamage { get; set; }
-    public string? RemainingHp { get; set; }
+    public bool Success { get; set; }
+    public int Damage { get; set; }
+    public int RemainingHealth { get; set; }
+    public DateTime Timestamp { get; set; }
 }
